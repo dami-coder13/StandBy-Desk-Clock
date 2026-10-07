@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <title>StandBy Uhr – Android</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --text: #ffffff;
+      --accent: #ffffff;
+      --secondary: #aaaaaa;
+      --clock-size: 22vw;
+      --date-size: 3.5vw;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    /* Background layers */
+    #bg-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: var(--bg);
+      transition: background 0.5s ease;
+    }
+
+    #bg-image {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 0;
+    }
+
+    #bg-gradient {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 0;
+    }
+
+    /* Main clock area */
+    #clock-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 4vh 3vw;
+      text-align: center;
+    }
+
+    /* Digital clock */
+    #digital-clock {
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      line-height: 0.95;
+      transition: all 0.3s ease;
+    }
+
+    #digital-clock .time {
+      font-size: var(--clock-size);
+      display: block;
+    }
+
+    #digital-clock .seconds {
+      font-size: calc(var(--clock-size) * 0.35);
+      opacity: 0.7;
+      margin-left: 0.15em;
+    }
+
+    #digital-clock .ampm {
+      font-size: calc(var(--clock-size) * 0.28);
+      opacity: 0.8;
+      margin-left: 0.2em;
+      font-weight: 400;
+      vertical-align: super;
+    }
+
+    /* Analog clock */
+    #analog-clock {
+      display: none;
+      width: min(55vw, 55vh);
+      height: min(55vw, 55vh);
+      position: relative;
+    }
+
+    #analog-clock svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Flip clock style */
+    #flip-clock {
+      display: none;
+      gap: 0.4em;
+      perspective: 800px;
+    }
+
+    .flip-unit {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 0.15em 0.25em;
+      min-width: 1.4em;
+      text-align: center;
+      font-size: calc(var(--clock-size) * 0.85);
+      font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .flip-unit::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: rgba(0,0,0,0.5);
+    }
+
+    /* Minimal / Word style */
+    #word-clock {
+      display: none;
+      font-size: calc(var(--clock-size) * 0.55);
+      font-weight: 300;
+      line-height: 1.3;
+      max-width: 90vw;
+    }
+
+    /* Date & extras */
+    #date-line {
+      margin-top: 1.8vh;
+      font-size: var(--date-size);
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
+      text-transform: capitalize;
+    }
+
+    #extra-info {
+      margin-top: 1.2vh;
+      font-size: calc(var(--date-size) * 0.9);
+      opacity: 0.7;
+      display: flex;
+      gap: 1.5em;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    #battery-info {
+      display: flex;
+      align-items: center;
+      gap: 0.35em;
+    }
+
+    .battery-icon {
+      width: 1.4em;
+      height: 0.75em;
+      border: 1.5px solid currentColor;
+      border-radius: 2px;
+      position: relative;
+      display: inline-block;
+    }
+
+    .battery-icon::after {
+      content: '';
+      position: absolute;
+      right: -3px;
+      top: 20%;
+      height: 60%;
+      width: 2px;
+      background: currentColor;
+      border-radius: 0 1px 1px 0;
+    }
+
+    .battery-level {
+      position: absolute;
+      left: 1px;
+      top: 1px;
+      bottom: 1px;
+      background: currentColor;
+      border-radius: 1px;
+      transition: width 0.5s ease;
+    }
+
+    /* Night mode red tint */
+    body.night-mode {
+      --text: #ff3333;
+      --accent: #ff3333;
+      --secondary: #cc2222;
+    }
+
+    body.night-mode #bg-layer {
+      background: #0a0000 !important;
+    }
+
+    /* Settings panel */
+    #settings-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 100;
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: var(--text);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      opacity: 0.6;
+      transition: opacity 0.2s, background 0.2s;
+    }
+
+    #settings-btn:hover, #settings-btn:active {
+      opacity: 1;
+      background: rgba(255,255,255,0.25);
+    }
+
+    #settings-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(360px, 92vw);
+      background: rgba(20,20,22,0.96);
+      backdrop-filter: blur(20px);
+      z-index: 200;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      padding: 20px 18px 40px;
+      color: #eee;
+      box-shadow: -8px 0 30px rgba(0,0,0,0.5);
+    }
+
+    #settings-panel.open {
+      transform: translateX(0);
+    }
+
+    #settings-panel h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #close-settings {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .setting-group {
+      margin-bottom: 22px;
+    }
+
+    .setting-group label {
+      display: block;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #999;
+      margin-bottom: 8px;
+    }
+
+    .options-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .opt-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid transparent;
+      color: #ddd;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .opt-btn:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    .opt-btn.active {
+      background: rgba(255,255,255,0.22);
+      border-color: rgba(255,255,255,0.35);
+      color: #fff;
+    }
+
+    .color-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.1);
+    }
+
+    .color-swatch.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #fff;
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+    }
+
+    .toggle {
+      width: 44px;
+      height: 26px;
+      background: #444;
+      border-radius: 13px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle.on {
+      background: #34c759;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+    }
+
+    .toggle.on::after {
+      transform: translateX(18px);
+    }
+
+    /* Fullscreen hint */
+    #hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      z-index: 50;
+      opacity: 0.9;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+
+    #hint.hidden {
+      opacity: 0;
+    }
+
+    /* Orientation notice */
+    #orient-notice {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 300;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 30px;
+      color: #fff;
+    }
+
+    #orient-notice svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+
+    @media (orientation: portrait) {
+      #orient-notice {
+        display: flex;
+      }
+      #clock-container, #settings-btn {
+        display: none !important;
+      }
+    }
+
+    /* Landscape adjustments for very wide screens */
+    @media (min-aspect-ratio: 2/1) {
+      :root {
+        --clock-size: 18vw;
+        --date-size: 2.8vw;
+      }
+    }
+
+    /* Small height landscape */
+    @media (max-height: 400px) {
+      :root {
+        --clock-size: 28vh;
+        --date-size: 5vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="bg-layer"></div>
+  <div id="bg-image"></div>
+  <div id="bg-gradient"></div>
+
+  <div id="clock-container">
+    <!-- Digital -->
+    <div id="digital-clock">
+      <span class="time" id="time-display">00:00</span>
+    </div>
+
+    <!-- Analog -->
+    <div id="analog-clock">
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+        <circle cx="100" cy="100" r="4" fill="currentColor"/>
+        <!-- Hour marks -->
+        <g id="hour-marks" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"></g>
+        <!-- Hands -->
+        <line id="hour-hand" x1="100" y1="100" x2="100" y2="55" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+        <line id="minute-hand" x1="100" y1="100" x2="100" y2="30" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+        <line id="second-hand" x1="100" y1="100" x2="100" y2="22" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Flip -->
+    <div id="flip-clock">
+      <div class="flip-unit" id="flip-h1">0</div>
+      <div class="flip-unit" id="flip-h2">0</div>
+      <div style="font-size: calc(var(--clock-size)*0.6); opacity:0.6; align-self:center;">:</div>
+      <div class="flip-unit" id="flip-m1">0</div>
+      <div class="flip-unit" id="flip-m2">0</div>
+    </div>
+
+    <!-- Word -->
+    <div id="word-clock" id="word-display"></div>
+
+    <div id="date-line"></div>
+    <div id="extra-info">
+      <div id="battery-info" style="display:none;">
+        <span class="battery-icon"><span class="battery-level" id="bat-level" style="width:70%"></span></span>
+        <span id="bat-percent">70%</span>
+      </div>
+      <div id="weekday"></div>
+    </div>
+  </div>
+
+  <button id="settings-btn" title="Einstellungen">⚙</button>
+
+  <div id="settings-panel">
+    <h2>
+      Einstellungen
+      <button id="close-settings">×</button>
+    </h2>
+
+    <div class="setting-group">
+      <label>Uhr-Stil</label>
+      <div class="options-row" id="style-options">
+        <button class="opt-btn active" data-style="digital">Digital</button>
+        <button class="opt-btn" data-style="analog">Analog</button>
+        <button class="opt-btn" data-style="flip">Flip</button>
+        <button class="opt-btn" data-style="word">Worte</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label>Theme</label>
+      <div class="options-row" id="theme-options">
+        <button class="opt-btn active" data-theme="classic">Klassisch</button>
+        <button class="opt-btn" data-theme="ios">iOS StandBy</button>
+        <button class="opt-btn" data-theme="night">Nacht (Rot)</button>
+        <button class="opt-btn" data-theme="neon">Neon</button>
+        <button class="opt-btn" data-theme="warm">Warm</button>
+        <button class="opt-btn" data-theme="ocean">Ozean</button>
+        <button class="opt-btn" data-theme="minimal">Minimal</button>
+        <button class="opt-btn" data-theme="gradient">Gradient</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label>Textfarbe</label>
+      <div class="options-row" id="color-options">
+        <div class="color-swatch active" style="background:#ffffff" data-color="#ffffff"></div>
+        <div class="color-swatch" style="background:#ff3333" data-color="#ff3333"></div>
+        <div class="color-swatch" style="background:#34c759" data-color="#34c759"></div>
+        <div class="color-swatch" style="background:#0a84ff" data-color="#0a84ff"></div>
+        <div class="color-swatch" style="background:#ff9f0a" data-color="#ff9f0a"></div>
+        <div class="color-swatch" style="background:#bf5af2" data-color="#bf5af2"></div>
+        <div class="color-swatch" style="background:#64d2ff" data-color="#64d2ff"></div>
+        <div class="color-swatch" style="background:#ffd60a" data-color="#ffd60a"></div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label>Schriftart</label>
+      <div class="options-row" id="font-options">
+        <button class="opt-btn active" data-font="system">System</button>
+        <button class="opt-btn" data-font="sf">SF Pro</button>
+        <button class="opt-btn" data-font="mono">Mono</button>
+        <button class="opt-btn" data-font="rounded">Rounded</button>
+        <button class="opt-btn" data-font="thin">Dünn</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label>Uhrgröße</label>
+      <input type="range" id="size-slider" min="12" max="32" value="22">
+    </div>
+
+    <div class="setting-group">
+      <div class="toggle-row">
+        <span>24-Stunden-Format</span>
+        <div class="toggle on" id="toggle-24h"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Sekunden anzeigen</span>
+        <div class="toggle" id="toggle-seconds"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Datum anzeigen</span>
+        <div class="toggle on" id="toggle-date"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Wochentag anzeigen</span>
+        <div class="toggle on" id="toggle-weekday"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Batterie anzeigen</span>
+        <div class="toggle" id="toggle-battery"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Bildschirm wach halten</span>
+        <div class="toggle on" id="toggle-wake"></div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label>Hintergrund</label>
+      <div class="options-row" id="bg-options">
+        <button class="opt-btn active" data-bg="solid">Einfarbig</button>
+        <button class="opt-btn" data-bg="gradient1">Gradient 1</button>
+        <button class="opt-btn" data-bg="gradient2">Gradient 2</button>
+        <button class="opt-btn" data-bg="gradient3">Gradient 3</button>
+        <button class="opt-btn" data-bg="dots">Punkte</button>
+      </div>
+    </div>
+
+    <div class="setting-group" style="margin-top: 30px; font-size: 0.8rem; color: #777; line-height: 1.4;">
+      <p><strong>Tipp:</strong> Zum Vollbild in den Browser-Einstellungen „Zum Startbildschirm hinzufügen“ wählen und im Querformat laden.</p>
+      <p style="margin-top:8px;">Funktioniert am besten im Landscape-Modus wie das iPhone StandBy.</p>
+    </div>
+  </div>
+
+  <div id="hint">Tippe ⚙ für Einstellungen · Querformat empfohlen</div>
+
+  <div id="orient-notice">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="4" y="2" width="16" height="20" rx="2"/>
+      <path d="M12 18h.01"/>
+      <path d="M8 6h8" stroke-linecap="round"/>
+    </svg>
+    <h2 style="margin-bottom:12px;">Bitte drehen</h2>
+    <p style="opacity:0.8; max-width:280px;">Diese Uhr ist für das Querformat optimiert – genau wie das iPhone StandBy beim Laden.</p>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      style: 'digital',
+      theme: 'classic',
+      color: '#ffffff',
+      font: 'system',
+      size: 22,
+      h24: true,
+      seconds: false,
+      date: true,
+      weekday: true,
+      battery: false,
+      wake: true,
+      bg: 'solid'
+    };
+
+    // DOM refs
+    const $ = id => document.getElementById(id);
+    const timeDisplay = $('time-display');
+    const dateLine = $('date-line');
+    const weekdayEl = $('weekday');
+    const digitalClock = $('digital-clock');
+    const analogClock = $('analog-clock');
+    const flipClock = $('flip-clock');
+    const wordClock = $('word-clock');
+    const settingsPanel = $('settings-panel');
+    const hint = $('hint');
+
+    // Wake Lock
+    let wakeLock = null;
+    async function requestWakeLock() {
+      if (!state.wake || !('wakeLock' in navigator)) return;
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } catch (e) {}
+    }
+
+    function releaseWakeLock() {
+      if (wakeLock) wakeLock.release();
+      wakeLock = null;
+    }
+
+    // Battery (if available)
+    let batteryManager = null;
+    async function initBattery() {
+      if ('getBattery' in navigator) {
+        try {
+          batteryManager = await navigator.getBattery();
+          updateBattery();
+          batteryManager.addEventListener('levelchange', updateBattery);
+          batteryManager.addEventListener('chargingchange', updateBattery);
+        } catch (e) {}
+      }
+    }
+
+    function updateBattery() {
+      if (!batteryManager || !state.battery) return;
+      const pct = Math.round(batteryManager.level * 100);
+      $('bat-percent').textContent = pct + '%';
+      $('bat-level').style.width = pct + '%';
+      if (batteryManager.charging) {
+        $('bat-percent').textContent += ' ⚡';
+      }
+    }
+
+    // Clock update
+    function updateClock() {
+      const now = new Date();
+      let h = now.getHours();
+      const m = now.getMinutes();
+      const s = now.getSeconds();
+
+      // Digital
+      if (state.style === 'digital') {
+        let displayH = h;
+        let ampm = '';
+        if (!state.h24) {
+          ampm = h >= 12 ? ' PM' : ' AM';
+          displayH = h % 12 || 12;
+        }
+        const hh = String(displayH).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        let html = `<span class="time">${hh}:${mm}`;
+        if (state.seconds) {
+          html += `<span class="seconds">:${String(s).padStart(2,'0')}</span>`;
+        }
+        if (!state.h24) {
+          html += `<span class="ampm">${ampm}</span>`;
+        }
+        html += `</span>`;
+        timeDisplay.innerHTML = html;
+      }
+
+      // Analog
+      if (state.style === 'analog') {
+        const hourDeg = ((h % 12) + m / 60) * 30;
+        const minDeg = (m + s / 60) * 6;
+        const secDeg = s * 6;
+        $('hour-hand').setAttribute('transform', `rotate(${hourDeg} 100 100)`);
+        $('minute-hand').setAttribute('transform', `rotate(${minDeg} 100 100)`);
+        $('second-hand').setAttribute('transform', `rotate(${secDeg} 100 100)`);
+        $('second-hand').style.display = state.seconds ? 'block' : 'none';
+      }
+
+      // Flip
+      if (state.style === 'flip') {
+        let displayH = state.h24 ? h : (h % 12 || 12);
+        const hh = String(displayH).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        $('flip-h1').textContent = hh[0];
+        $('flip-h2').textContent = hh[1];
+        $('flip-m1').textContent = mm[0];
+        $('flip-m2').textContent = mm[1];
+      }
+
+      // Word
+      if (state.style === 'word') {
+        const words = [
+          'Null','Eins','Zwei','Drei','Vier','Fünf','Sechs','Sieben','Acht','Neun',
+          'Zehn','Elf','Zwölf','Dreizehn','Vierzehn','Fünfzehn','Sechzehn','Siebzehn','Achtzehn','Neunzehn',
+          'Zwanzig','Einundzwanzig','Zweiundzwanzig','Dreiundzwanzig'
+        ];
+        const minWords = ['','fünf','zehn','viertel','zwanzig','fünfundzwanzig','halb'];
+        let text = '';
+        if (m === 0) text = words[h % 24] + ' Uhr';
+        else if (m === 15) text = 'Viertel nach ' + words[h % 12 || 12];
+        else if (m === 30) text = 'Halb ' + words[(h % 12) + 1 || 1];
+        else if (m === 45) text = 'Viertel vor ' + words[(h % 12) + 1 || 1];
+        else if (m < 30) text = words[h % 12 || 12] + ' Uhr ' + (m < 10 ? 'null' + m : m);
+        else text = words[(h % 12) + 1 || 1] + ' Uhr ' + (60 - m);
+        wordClock.textContent = text;
+      }
+
+      // Date
+      if (state.date) {
+        const options = { weekday: 'long', day: 'numeric', month: 'long' };
+        dateLine.textContent = now.toLocaleDateString('de-DE', options);
+        dateLine.style.display = 'block';
+      } else {
+        dateLine.style.display = 'none';
+      }
+
+      if (state.weekday && !state.date) {
+        weekdayEl.textContent = now.toLocaleDateString('de-DE', { weekday: 'long' });
+      } else {
+        weekdayEl.textContent = '';
+      }
+    }
+
+    // Apply style visibility
+    function applyStyle() {
+      digitalClock.style.display = state.style === 'digital' ? 'block' : 'none';
+      analogClock.style.display = state.style === 'analog' ? 'block' : 'none';
+      flipClock.style.display = state.style === 'flip' ? 'flex' : 'none';
+      wordClock.style.display = state.style === 'word' ? 'block' : 'none';
+      updateClock();
+    }
+
+    // Themes
+    const themes = {
+      classic: { bg: '#000000', text: '#ffffff', accent: '#ffffff' },
+      ios: { bg: '#0a0a0a', text: '#f5f5f7', accent: '#0a84ff' },
+      night: { bg: '#0a0000', text: '#ff3333', accent: '#ff3333' },
+      neon: { bg: '#050510', text: '#00ffcc', accent: '#ff00aa' },
+      warm: { bg: '#1a1008', text: '#ffcc88', accent: '#ff9944' },
+      ocean: { bg: '#021018', text: '#a0e0ff', accent: '#00aaff' },
+      minimal: { bg: '#111111', text: '#e0e0e0', accent: '#e0e0e0' },
+      gradient: { bg: '#000000', text: '#ffffff', accent: '#ffffff' }
+    };
+
+    function applyTheme() {
+      const t = themes[state.theme] || themes.classic;
+      document.documentElement.style.setProperty('--bg', t.bg);
+      document.documentElement.style.setProperty('--text', t.text);
+      document.documentElement.style.setProperty('--accent', t.accent);
+      document.body.style.color = t.text;
+      $('bg-layer').style.background = t.bg;
+
+      if (state.theme === 'night') {
+        document.body.classList.add('night-mode');
+      } else {
+        document.body.classList.remove('night-mode');
+      }
+
+      // Special gradients
+      const grad = $('bg-gradient');
+      if (state.theme === 'gradient' || state.bg.startsWith('gradient')) {
+        grad.style.opacity = '1';
+        if (state.bg === 'gradient1' || state.theme === 'gradient') {
+          grad.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+        } else if (state.bg === 'gradient2') {
+          grad.style.background = 'linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%)';
+        } else if (state.bg === 'gradient3') {
+          grad.style.background = 'radial-gradient(ellipse at center, #1e3c72 0%, #2a5298 50%, #0a0a1a 100%)';
+        }
+      } else if (state.bg === 'dots') {
+        grad.style.opacity = '1';
+        grad.style.background = 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)';
+        grad.style.backgroundSize = '24px 24px';
+      } else {
+        grad.style.opacity = '0';
+      }
+    }
+
+    function applyColor() {
+      document.documentElement.style.setProperty('--text', state.color);
+      document.documentElement.style.setProperty('--accent', state.color);
+      document.body.style.color = state.color;
+    }
+
+    function applyFont() {
+      const fonts = {
+        system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        sf: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+        mono: '"SF Mono", "Menlo", "Consolas", monospace',
+        rounded: '"SF Pro Rounded", "Nunito", "Quicksand", sans-serif',
+        thin: '-apple-system, BlinkMacSystemFont, sans-serif'
+      };
+      document.body.style.fontFamily = fonts[state.font] || fonts.system;
+      if (state.font === 'thin') {
+        digitalClock.style.fontWeight = '200';
+      } else {
+        digitalClock.style.fontWeight = '300';
+      }
+    }
+
+    function applySize() {
+      document.documentElement.style.setProperty('--clock-size', state.size + 'vw');
+    }
+
+    function applyBatteryVisibility() {
+      $('battery-info').style.display = state.battery ? 'flex' : 'none';
+      if (state.battery) updateBattery();
+    }
+
+    // Hour marks for analog
+    function createHourMarks() {
+      const g = $('hour-marks');
+      for (let i = 0; i < 12; i++) {
+        const angle = i * 30;
+        const rad = (angle - 90) * Math.PI / 180;
+        const x1 = 100 + Math.cos(rad) * 88;
+        const y1 = 100 + Math.sin(rad) * 88;
+        const x2 = 100 + Math.cos(rad) * 96;
+        const y2 = 100 + Math.sin(rad) * 96;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        g.appendChild(line);
+      }
+    }
+
+    // Event listeners
+    $('settings-btn').addEventListener('click', () => {
+      settingsPanel.classList.add('open');
+      hint.classList.add('hidden');
+    });
+
+    $('close-settings').addEventListener('click', () => {
+      settingsPanel.classList.remove('open');
+    });
+
+    // Style buttons
+    document.querySelectorAll('#style-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#style-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.style = btn.dataset.style;
+        applyStyle();
+        saveState();
+      });
+    });
+
+    // Theme
+    document.querySelectorAll('#theme-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#theme-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.theme = btn.dataset.theme;
+        applyTheme();
+        saveState();
+      });
+    });
+
+    // Colors
+    document.querySelectorAll('.color-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        state.color = sw.dataset.color;
+        applyColor();
+        saveState();
+      });
+    });
+
+    // Fonts
+    document.querySelectorAll('#font-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#font-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.font = btn.dataset.font;
+        applyFont();
+        saveState();
+      });
+    });
+
+    // Size
+    $('size-slider').addEventListener('input', (e) => {
+      state.size = +e.target.value;
+      applySize();
+      saveState();
+    });
+
+    // Toggles
+    function setupToggle(id, key, callback) {
+      const el = $(id);
+      el.addEventListener('click', () => {
+        state[key] = !state[key];
+        el.classList.toggle('on', state[key]);
+        if (callback) callback();
+        saveState();
+      });
+    }
+
+    setupToggle('toggle-24h', 'h24', updateClock);
+    setupToggle('toggle-seconds', 'seconds', updateClock);
+    setupToggle('toggle-date', 'date', updateClock);
+    setupToggle('toggle-weekday', 'weekday', updateClock);
+    setupToggle('toggle-battery', 'battery', applyBatteryVisibility);
+    setupToggle('toggle-wake', 'wake', () => {
+      if (state.wake) requestWakeLock();
+      else releaseWakeLock();
+    });
+
+    // Background
+    document.querySelectorAll('#bg-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#bg-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.bg = btn.dataset.bg;
+        applyTheme();
+        saveState();
+      });
+    });
+
+    // Persistence
+    function saveState() {
+      localStorage.setItem('standbyClock', JSON.stringify(state));
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('standbyClock'));
+        if (saved) Object.assign(state, saved);
+      } catch (e) {}
+    }
+
+    function applyAll() {
+      // Restore UI
+      document.querySelectorAll('#style-options .opt-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.style === state.style);
+      });
+      document.querySelectorAll('#theme-options .opt-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.theme === state.theme);
+      });
+      document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('active', s.dataset.color === state.color);
+      });
+      document.querySelectorAll('#font-options .opt-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.font === state.font);
+      });
+      document.querySelectorAll('#bg-options .opt-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.bg === state.bg);
+      });
+      $('size-slider').value = state.size;
+      $('toggle-24h').classList.toggle('on', state.h24);
+      $('toggle-seconds').classList.toggle('on', state.seconds);
+      $('toggle-date').classList.toggle('on', state.date);
+      $('toggle-weekday').classList.toggle('on', state.weekday);
+      $('toggle-battery').classList.toggle('on', state.battery);
+      $('toggle-wake').classList.toggle('on', state.wake);
+
+      applyStyle();
+      applyTheme();
+      applyColor();
+      applyFont();
+      applySize();
+      applyBatteryVisibility();
+    }
+
+    // Init
+    createHourMarks();
+    loadState();
+    applyAll();
+    updateClock();
+    setInterval(updateClock, 1000);
+    initBattery();
+    requestWakeLock();
+
+    // Hide hint after a while
+    setTimeout(() => hint.classList.add('hidden'), 6000);
+
+    // Re-request wake lock on visibility change
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && state.wake) requestWakeLock();
+    });
+
+    // Close settings on outside click (simple)
+    document.addEventListener('click', (e) => {
+      if (settingsPanel.classList.contains('open') &&
+          !settingsPanel.contains(e.target) &&
+          e.target !== $('settings-btn')) {
+        settingsPanel.classList.remove('open');
+      }
+    });
+  </script>
+</body>
+</html>
